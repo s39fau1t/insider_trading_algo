@@ -18,17 +18,22 @@ import yfinance as yf
 from datetime import datetime, timedelta
 
 # Initialize the calendars object
-"""
 start = datetime.now().replace(hour=16)
 end = start + timedelta(days=1)
 
 calendars = yf.Calendars(start, end)
-"""
-start = datetime.now()
-end = start + timedelta(days=14)
 
-calendars = yf.Calendars(start, end)
 # Get upcoming earnings (Limit of 100 results)
-earnings_calendar = calendars.get_earnings_calendar()
+df = calendars.get_earnings_calendar()
 
-print(earnings_calendar.to_string())
+symbols = []
+
+for row in df.itertuples():
+    symbol = row.Index
+    ticker = yf.Ticker(symbol)
+    exchange = ticker.info.get("exchange")
+    #nasdaq = NMS, NYSE = NYQ
+    if exchange == "NMS" or exchange == "NYQ":
+        symbols.append(symbol)
+
+print(symbols)
