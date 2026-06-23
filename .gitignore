@@ -11,3 +11,5 @@ wheels/
 
 # Environment Variables, Secrets & Keys
 .env
+
+sec-edgar-filings

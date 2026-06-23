@@ -2,10 +2,12 @@ import yfinance as yf
 from sec_edgar_downloader import Downloader
 
 from datetime import datetime, timedelta, date
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
 # Initialize the calendars object
 start = datetime.now().replace(hour=16)
-end = start + timedelta(days=1)
+end = start + timedelta(days=14)
 
 calendars = yf.Calendars(start, end)
 
@@ -17,12 +19,12 @@ symbols = []
 for row in df.itertuples():
     symbol = row.Index
     ticker = yf.Ticker(symbol)
-    exchange = ticker.info.get("exchange")
+    exchange = ticker.info.get('exchange')
     #nasdaq = NMS, NYSE = NYQ
-    if exchange == "NMS" or exchange == "NYQ":
+    if exchange == 'NMS' or exchange == 'NYQ':
         symbols.append(symbol)
 
-dl = Downloader("MyCompanyName", "my.email@domain.com")
+dl = Downloader('MyCompanyName', 'my.email@domain.com')
 
 for symbol in symbols:
     ticker = yf.Ticker(symbol)
@@ -32,4 +34,68 @@ for symbol in symbols:
     if last_earnings > date.today():
         last_earnings = earnings_dates.index[1].date()
 
-    dl.get("4", symbol, after=last_earnings)
+    dl.get('4', symbol, after=last_earnings)
+
+    filings = Path(f'sec-edgar-filings/{symbol}/4')
+    if not filings.exists():
+        continue
+
+    for folder in filings.iterdir():
+        file = folder / "full-submission.txt"
+        print(file)
+        tree = ET.parse(file)
+        print(tree.getroot().tag)
+
+
+
+#i think this means 10b5-1
+#<aff10b5One>1</aff10b5One>
+
+"""
+<transactionAcquiredDisposedCode>
+    <value>D</value>
+</transactionAcquiredDisposedCode>
+"""
+
+
+
+"""
+    <nonDerivativeTable>
+        <nonDerivativeTransaction>
+            <securityTitle>
+                <value>Class B Common Stock</value>
+            </securityTitle>
+            <transactionDate>
+                <value>2026-04-07</value>
+                <footnoteId id="F1"/>
+            </transactionDate>
+            <transactionCoding>
+                <transactionFormType>4</transactionFormType>
+                <transactionCode>P</transactionCode>
+                <equitySwapInvolved>0</equitySwapInvolved>
+            </transactionCoding>
+            <transactionTimeliness></transactionTimeliness>
+            <transactionAmounts>
+                <transactionShares>
+                    <value>11781.387</value>
+                </transactionShares>
+                <transactionPricePerShare>
+                    <value>42.44</value>
+                    <footnoteId id="F2"/>
+                </transactionPricePerShare>
+                <transactionAcquiredDisposedCode>
+                    <value>A</value>
+                </transactionAcquiredDisposedCode>
+            </transactionAmounts>
+            <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction>
+                    <value>55074.387</value>
+                </sharesOwnedFollowingTransaction>
+            </postTransactionAmounts>
+            <ownershipNature>
+                <directOrIndirectOwnership>
+                    <value>D</value>
+                </directOrIndirectOwnership>
+            </ownershipNature>
+        </nonDerivativeTransaction>
+"""
