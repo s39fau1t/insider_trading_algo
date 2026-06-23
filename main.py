@@ -43,7 +43,10 @@ for symbol in symbols:
     for folder in filings.iterdir():
         file = folder / "full-submission.txt"
         print(file)
-        tree = ET.parse(file)
+        raw = file.read_text()
+        xml_start = raw.find('<XML>') + len('<XML>')
+        xml_end = raw.find('</XML>')
+        tree = ET.ElementTree(ET.fromstring(raw[xml_start:xml_end].strip()))
         print(tree.getroot().tag)
 
 
