@@ -1,21 +1,7 @@
-"""
+import yfinance as yf
 from sec_edgar_downloader import Downloader
 
-# Initialize a downloader instance. Download filings to the current
-# working directory. Must declare company name and email address
-# to form a user-agent string that complies with the SEC Edgar's
-# programmatic downloading fair access policy.
-# More info: https://www.sec.gov/os/webmaster-faq#code-support
-# Company name and email are used to form a user-agent of the form:
-# User-Agent: <Company Name> <Email Address>
-dl = Downloader("MyCompanyName", "my.email@domain.com")
-
-# Get all 8-K filings for Apple (ticker: AAPL)
-print(dl.get("8-K", "AAPL"))
-"""
-
-import yfinance as yf
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # Initialize the calendars object
 start = datetime.now().replace(hour=16)
@@ -36,4 +22,14 @@ for row in df.itertuples():
     if exchange == "NMS" or exchange == "NYQ":
         symbols.append(symbol)
 
-print(symbols)
+dl = Downloader("MyCompanyName", "my.email@domain.com")
+
+for symbol in symbols:
+    ticker = yf.Ticker(symbol)
+    earnings_dates = ticker.get_earnings_dates()
+    last_earnings = earnings_dates.index[0].date()
+
+    if last_earnings > date.today():
+        last_earnings = earnings_dates.index[1].date()
+
+    dl.get("4", symbol, after=last_earnings)
