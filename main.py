@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 
 # Initialize the calendars object
 start = datetime.now().replace(hour=16)
+#TODO                   SHOULD BE 1; 14 for debug purposes
 end = start + timedelta(days=14)
 
 calendars = yf.Calendars(start, end)
@@ -42,24 +43,27 @@ for symbol in symbols:
 
     for folder in filings.iterdir():
         file = folder / "full-submission.txt"
-        print(file)
         raw = file.read_text()
         xml_start = raw.find('<XML>') + len('<XML>')
         xml_end = raw.find('</XML>')
         tree = ET.ElementTree(ET.fromstring(raw[xml_start:xml_end].strip()))
-        print(tree.getroot().tag)
+        root = tree.getroot()
 
+        # exclude 10b5-1 pre-planned purchases
+        pre_planned = int(root.find("aff10b5One").value)
+        if pre_planned:
+            continue
 
+        # TODO: account for multiple nonDerivativeTransaction s
+        
+        
+        # find whether acquired "a" or disposed "d" TODO: could be multiple, must check all
+        """
+        a_d = root.find(".//transactionAcquiredDisposedCode/value")
 
-#i think this means 10b5-1
-#<aff10b5One>1</aff10b5One>
-
-"""
-<transactionAcquiredDisposedCode>
-    <value>D</value>
-</transactionAcquiredDisposedCode>
-"""
-
+        print(a_d.text)
+        """
+        # account for direct/indirect ownership??
 
 
 """
