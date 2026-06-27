@@ -1,0 +1,5 @@
+ticker,buyer_id,buyer_name,role,source,transaction_date,shares,price,planned_10b5_1,disclosed_date
+ACME,1,Jane CEO,CEO,corporate,2026-05-20,10000,20.00,false,2026-05-21
+ACME,2,Board Member,Director,corporate,2026-06-08,8000,22.00,false,2026-06-09
+ACME,3,Rep Buyer,Congress,congress,2026-06-10,5000,21.00,false,2026-06-24
+MEGA,4,Small Buyer,CFO,corporate,2026-04-01,100,10.00,false,2026-04-02

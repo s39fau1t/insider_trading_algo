@@ -1,0 +1,432 @@
+
+
+--- PAGE 1 ---
+Strategy Proposal: Insider Signal Earnings Momentum Trader
+(ISEM)
+Prepared for: Trading Algorithm Development Team
+Status: Draft for Review
+Document Version: 1.0
+1. Executive Summary
+This proposal outlines a new short-term swing trading algorithm — the Insider Signal
+Earnings Momentum Trader (ISEM) — built on the premise that corporate insiders and
+members of Congress, when purchasing stock in the period between earnings reports,
+often possess informational advantages about the company's next reported results. By
+cross-referencing mandatory public disclosures of such purchases against the upcoming
+earnings calendar, the algorithm identiﬁes stocks likely to rise on their next earnings
+report. ISEM takes a single long position ahead of each qualifying earnings event, holds the
+position through the market's processing of that report, and exits at close the following day.
+All trades are bracket orders with a stop-loss. If no high-conviction candidate exists on a
+given day, the algorithm holds cash.
+2. Investment Thesis
+When a company executive purchases a meaningful amount of their own company's stock
+in the weeks leading up to an earnings report — particularly as that report approaches — it
+is reasonable to infer that the executive has conﬁdence in results that have not yet been
+made public. Public companies trading on major U.S. exchanges (NYSE, NASDAQ, etc.) are
+required by the SEC to disclose such purchases via Form 4, typically within two business
+days of the transaction. Members of Congress are separately required to disclose their stock
+trades within 45 days of a transaction under the STOCK Act.
+If a company beats earnings expectations, its stock price typically rises on or immediately
+after the announcement. By systematically identifying stocks where insiders and Congress
+members have been purchasing shares during the inter-earnings window — especially
+with increasing frequency as the next earnings date approaches — the algorithm positions
+itself to capture that post-earnings upside, while a strict stop-loss limits downside
+exposure.
+3. Insider Universe
+
+
+--- PAGE 2 ---
+The algorithm will monitor purchases made by the following categories of individuals for
+each company with an upcoming earnings event:
+Corporate Insiders (via SEC Form 4)
+C-suite executives (CEO, CFO, COO, CTO, President, etc.)
+Board of directors members
+Oﬃcers designated as "reporting persons" by the SEC
+Beneﬁcial owners of 10% or more of outstanding shares
+Government Insiders (via STOCK Act Disclosures)
+U.S. House of Representatives members
+U.S. Senate members
+Transaction Type Filter: The algorithm should only track open market purchases (Form 4
+transaction code "P"). It should exclude option exercises, awards, gifts, and planned
+purchases made under pre-scheduled 10b5-1 trading plans, as these do not reﬂect real-time
+conviction. A ﬂag for 10b5-1 plan purchases is included in Form 4 ﬁlings and should be used
+to ﬁlter these out.
+4. Data Sources
+All recommended sources below are free of charge.
+4.1 Earnings Calendar
+Primary:Yahoo Finance via the yfinance Python library — provides the earnings
+calendar, company tickers, and report timing (before market open, during market
+hours, or after market close)
+Secondary:Nasdaq Earnings Calendar — useful for cross-referencing and validating
+report timing
+4.2 Corporate Insider Transactions (Form 4)
+Source:SEC EDGAR Full-Text Search API and the SEC EDGAR Bulk Data
+Form 4 ﬁlings must be submitted within 2 business days of the transaction, so this
+data is near real-time
+Each ﬁling speciﬁes: the ﬁler's role, transaction date, shares purchased, price per
+share, and whether the trade was part of a 10b5-1 plan
+The sec-edgar-downloader Python package simpliﬁes bulk retrieval
+
+
+--- PAGE 3 ---
+4.3 Congressional Disclosures
+House:House Stock Watcher — free JSON API for all House member disclosures
+Senate:Senate Stock Watcher — free JSON API for all Senate member disclosures
+Important Lag Note: Congressional members have up to 45 days to ﬁle disclosures.
+The algorithm must use the transaction date listed in the disclosure, not the
+disclosure date, when applying the timing windows described in Section 5. A
+purchase disclosed today may have occurred 6 weeks ago. This is a critical distinction.
+4.4 Stock Price Data
+Source:Yahoo Finance via yﬁnance — free, no API key required
+Provides historical OHLCV data for backtesting and real-time quotes for trade
+execution
+Backup:Alpha Vantage (free tier: 25 requests/day) for cross-validation
+4.5 Prior Earnings Dates (for Window Calculation)
+Also available via yfinance — the Ticker.earnings_dates property returns
+historical earnings dates, which are needed to deﬁne the start of each inter-earnings
+signal window
+5. Signal Timing Framework
+The period between consecutive earnings reports is divided into distinct timing zones.
+Insider purchases carry diﬀerent signal weight depending on when they occurred within
+the inter-earnings cycle.
+5.1 Post-Earnings Exclusion Window (Days 1–14 after prior earnings)
+Duration: Approximately 14 calendar days (10 trading days) following the prior
+earnings report date
+Rationale: Purchases immediately after an earnings report are most likely a reaction
+to newly revealed results — good results that are now public knowledge — rather than
+forward-looking signals about the next earnings period. These purchases do not help
+predict future, unreleased performance.
+Treatment: Excluded entirely from the scoring algorithm.
+Note: This window is a recommended starting point. The exact cutoﬀ (10, 14, or 21
+days) should be validated and tuned during backtesting, and the architecture should
+make this parameter easily adjustable.
+
+
+--- PAGE 4 ---
+5.2 Core Signal Window (Day 15 after prior earnings through Day 28 before next
+earnings)
+This is the primary zone of interest. Purchases here are most likely driven by genuine
+conﬁdence in current business performance during the inter-earnings period.
+Most publicly traded companies enforce formal trading blackout periods beginning
+approximately 30 days before their earnings announcement. Purchases within the
+Core Signal Window occur during the legally permissible open trading window and
+carry strong credibility.
+Treatment: Full scoring weight applied. See Section 6.
+5.3 Late Signal Window (Day 28 through Day 3 before next earnings)
+As the next earnings date approaches, insiders are increasingly likely to be
+constrained by their company's blackout policy. Any purchases in this window
+despite a typical blackout would be unusual and potentially indicate extremely high
+conviction (though they also raise compliance questions).
+In practice, some companies have shorter or no formal blackout periods, so late-
+window purchases may simply reﬂect normal trading.
+Treatment: Purchases in this window receive a signal boost — they are weighted
+more heavily than Core Signal Window purchases, as proximity to the earnings date
+with continued buying suggests heightened conﬁdence. The exact multiplier should
+be calibrated during backtesting.
+5.4 Final 3 Days Before Earnings (Day 3 to Day 0)
+This is the algorithm's own entry zone. No new insider signal analysis is applied here;
+the algorithm is executing, not still evaluating.
+5.5 Diagram of Signal Windows
+6. Insider Signal Scoring
+For each company with an upcoming earnings event, the algorithm generates a composite
+signal score based on all insider and congressional purchases within the relevant timing
+[Prior Earnings] ─── [Exclusion: 14d] ─── [Core Signal Window] ─── [Late
+Signal] ─── [Earnings]
+(Excluded)                (Full Weight)
+(Boosted)        (Hold/Exit)
+
+
+--- PAGE 5 ---
+windows. Only companies that meet a minimum score threshold are considered for trade
+entry. The minimum threshold should be determined through backtesting.
+6.1 Scoring Dimensions
+A. Insider Count (max 25 points)
+Each unique insider or Congress member who made a qualifying purchase: +5 points
+each, up to a maximum of 5 distinct buyers
+B. Role Weighting (max 20 points)
+At least one C-suite executive among buyers: +10 points
+At least one board member or beneﬁcial owner among buyers: +5 points
+At least one Congress member among buyers: +5 points (equal weight to corporate
+insider per role tier)
+C. Timing Quality (max 20 points)
+Core Signal Window purchases present: +10 points
+Late Signal Window purchases present: +20 points (replaces Core Window points if
+both windows have purchases — Late Window is the stronger signal)
+D. Velocity Score (max 20 points)
+Multiple purchase events (across time) by any combination of insiders: +10 points
+Increasing purchase dollar amounts across the inter-earnings period (trend upward):
++10 points
+Velocity is calculated by dividing the inter-earnings window into thirds and
+comparing purchase volume in each third
+E. Congressional Lag Adjustment (up to +5 points)
+If a congressional purchase was disclosed very recently but the actual transaction
+date (per the ﬁling) falls squarely in the Late Signal Window, add +5 points to reﬂect
+the recency of the underlying information
+Total Maximum Score: 90 points
+6.2 Score Interpretation (Suggested Starting Thresholds)
+Score Interpretation Action
+0 – 29 Weak or no signal Hold cash
+
+
+--- PAGE 6 ---
+Score Interpretation Action
+30 – 49 Moderate signal Monitor; do not trade
+50 – 69 Strong signal Eligible for trade entry
+70 – 90 Very strong signal Priority candidate
+These thresholds are preliminary and should be validated against historical data during
+backtesting.
+7. Daily Algorithm Workﬂow
+The algorithm runs the following process each trading day:
+Step 1: Earnings Calendar Pull (Pre-Market)
+Query the earnings calendar for companies reporting earnings:
+Today (if reporting after market close today)
+Tomorrow (if reporting before market open or during market hours tomorrow)
+Filter to companies listed on NYSE or NASDAQ only
+Record each company's ticker, earnings report date, and report timing (BMO /
+Intraday / AMC)
+Step 2: Insider Data Pull
+For each company identiﬁed in Step 1:
+Retrieve their most recent prior earnings date
+Pull all Form 4 open-market purchases ﬁled since that prior earnings date
+Apply the 10b5-1 ﬁlter (exclude pre-planned purchases)
+Pull congressional disclosures for the same ticker; translate disclosure dates to
+transaction dates
+Apply the Post-Earnings Exclusion Window (discard purchases within 14 days of
+prior earnings)
+Step 3: Score Each Candidate
+Apply the scoring framework from Section 6 to each remaining company
+Discard any company scoring below the minimum threshold
+
+
+--- PAGE 7 ---
+Step 4: Rank and Select
+Rank all qualifying companies by their composite score (highest to lowest)
+If a tie exists, use dollar volume of insider purchases as a tiebreaker
+Select the top-ranked company as the trade candidate for the day
+Step 5: Check Existing Position
+If the algorithm currently holds a position that has not yet reached its exit trigger, do
+not enter a new trade — wait for the current position to close ﬁrst before evaluating
+the next candidate
+Step 6: Execute or Hold Cash
+If a qualifying candidate exists and no current position is held: execute the bracket
+order (see Section 8)
+If no candidate meets the threshold: hold cash for the day. Do not force a trade.
+8. Trade Execution Rules
+8.1 Position Sizing
+Each position uses 50% of total available capital
+The remaining 50% is held in cash at all times
+This applies even when conviction is very high — no exceptions
+8.2 Entry Timing
+Earnings Report Timing Entry Time
+Before Market Open (BMO) — tomorrow Before market close today
+During Market Hours (Intraday) Before market close today
+After Market Close (AMC) — today Before market close today
+All entries target execution as close to market close as practical (e.g., within the ﬁnal 15–30
+minutes of the session) to capture as much of the intraday price discovery as possible while
+ensuring the position is established before the report.
+8.3 Exit Timing
+
+
+--- PAGE 8 ---
+Earnings Report Timing Exit Time
+Before Market Open (BMO) Market close on the day of the report
+During Market Hours (Intraday) Market close on the day of the report
+After Market Close (AMC) Market close on the next trading day
+The algorithm does not attempt to sell into the post-earnings spike in real-time. Selling at
+close allows the market a full session to process the earnings reaction before the position is
+liquidated.
+8.4 Weekend Holding
+Positions may occasionally be held over weekends. This occurs when a company
+reports earnings after close on a Friday; the exit is at close the following Monday.
+The stop-loss bracket remains active, but gap risk over the weekend should be
+understood as an inherent characteristic of this strategy (see Section 10).
+8.5 Bracket Order Structure
+Every trade is entered as a bracket order consisting of:
+1. Market/Limit Entry Order — executed near market close on the entry day (see
+Section 8.2)
+2. Stop-Loss Order — a sell stop set at 4% below the entry price
+This is a hard protective ﬂoor. If the stock falls 4% from entry before the
+scheduled exit, the position is closed immediately
+The 4% level is chosen to allow for normal overnight volatility while protecting
+against meaningful adverse moves. This ﬁgure should be reviewed and adjusted
+based on backtesting results
+3. Primary Exit Order — a market-on-close (MOC) sell order for the designated exit
+date (see Section 8.3)
+The entry and primary exit are linked; the stop-loss is a standing resting order that cancels
+automatically if the primary exit executes ﬁrst. All three legs are submitted together.
+Gap Risk Acknowledgment: In cases where a stock opens signiﬁcantly below the stop-loss
+trigger (e.g., due to a pre-market earnings miss), the stop order may execute at a price
+meaningfully worse than 4% below entry. This is a known and accepted risk of overnight
+holding and cannot be fully eliminated with a stop order. It is documented here for
+transparency.
+
+
+--- PAGE 9 ---
+9. Capital Allocation and Throughput
+Capital per trade: 50% of total available capital
+Concurrent positions: Maximum 1 at any time
+Cash ﬂoor: Never less than 50% in cash
+Trade frequency: Approximately 1 trade per 1–3 trading days, depending on signal
+availability
+Holding period: Typically 1–3 trading days; up to 4 days including a weekend
+10. Risk Considerations
+10.1 Inherent Strategy Risks
+Risk Description Mitigation
+Earnings Miss Insiders can be wrong, or their
+purchases may reﬂect personal
+ﬁnancial planning rather than earnings
+conviction
+Stop-loss bracket; cash-ﬁrst
+policy when signals are weak
+Overnight/Weekend
+Gap
+Adverse news can cause the stock to
+open well below the stop-loss trigger
+price
+Accepted as inherent; not fully
+hedgeable without options
+Thin Liquidity Smaller-cap companies may have wide
+bid-ask spreads around earnings
+Consider a minimum market
+cap ﬁlter (e.g., $500M+) — to be
+determined during backtesting
+Signal Lag
+(Congress)
+Congressional disclosures are delayed
+up to 45 days, meaning the market may
+have already moved
+Algorithm uses transaction
+date, not disclosure date, for all
+window calculations
+10b5-1 False Signals Pre-scheduled purchase plans mimic
+insider conviction but are not real-time
+signals
+Filtered out using the plan ﬂag
+on Form 4 ﬁlings
+Regulatory Change SEC or STOCK Act disclosure rules
+could change
+Monitor regulatory landscape;
+no active mitigation required at
+this time
+
+
+--- PAGE 10 ---
+10.2 What This Strategy Does Not Do
+No short selling — the algorithm is strictly long-only
+No leverage — positions are cash-funded only
+No forced trading — the algorithm holds cash when no qualifying candidate exists
+11. Open Items for Research
+The following items were ﬂagged during proposal development as needing further
+investigation before ﬁnal implementation parameters are set. The architecture should be
+designed so these are conﬁgurable variables, not hardcoded values.
+Item Description Recommended Action
+Post-Earnings
+Exclusion Window
+Exact number of days after prior
+earnings to exclude from insider
+signal consideration
+Backtest at 10, 14, and 21 calendar days
+to determine which produces best
+predictive accuracy
+Minimum
+Purchase Size
+Should small symbolic purchases
+($1,000–$5,000) count the same as
+large purchases?
+Consider a minimum dollar threshold
+per purchase to ﬁlter noise; test
+multiple cutoﬀs
+Market Cap Filter Small-cap stocks may have
+liquidity issues that make
+execution diﬃcult around earnings
+Evaluate liquidity requirements;
+suggest testing a $500M minimum
+market cap ﬂoor
+Stop-Loss
+Calibration
+Is 4% the right stop-loss level for 1–
+3 day holds?
+Analyze historical overnight volatility
+of mid-to-large cap stocks around
+earnings to calibrate
+Score Threshold What minimum composite score
+triggers a trade?
+Determine via backtesting; target a
+threshold that balances signal quality
+with trade frequency
+Late Window
+Multiplier
+How much additional weight do
+Late Signal Window purchases
+deserve?
+Backtest with 1.5x, 2x, and 2.5x
+multipliers
+Sector
+Adjustments
+Should insider signal weighting
+diﬀer across sectors (e.g., tech vs.
+utilities)?
+Evaluate in backtesting Phase 2 if
+initial results warrant reﬁnement
+
+
+--- PAGE 11 ---
+12. Recommended Implementation Phases
+Phase 1 — Data Infrastructure (Weeks 1–3)
+Build data pipelines for:
+Yahoo Finance earnings calendar (via yfinance)
+SEC EDGAR Form 4 ﬁlings (via sec-edgar-downloader)
+House and Senate Stock Watcher APIs
+Normalize all data into a uniﬁed internal schema keyed by ticker and date
+Build the transaction-date extraction logic for congressional ﬁlings (handling the
+disclosure lag)
+Phase 2 — Signal Engine Development (Weeks 4–6)
+Implement the timing window classiﬁer
+Implement the composite scoring model (Section 6)
+Build the daily workﬂow logic (Section 7)
+Implement the ranking and selection logic (Section 9)
+Phase 3 — Backtesting (Weeks 7–11)
+Backtest against at least 5 years of historical earnings events (2019–2024)
+Evaluate returns, win rate, average gain on winners, average loss on losers, and Sharpe
+ratio
+Use backtesting results to calibrate all open items from Section 11
+Ensure stop-loss logic and bracket order simulation are included in the backtest
+Phase 4 — Paper Trading (Weeks 12–19)
+Run the algorithm in paper trading mode for a minimum of 2 months
+Validate live data pipeline reliability
+Conﬁrm execution timing is achievable with the broker's order types
+Document edge cases (e.g., earnings date changes, trading halts, delistings)
+Phase 5 — Live Deployment (Week 20+)
+Deploy with real capital following satisfactory paper trading results
+Monitor signal quality, execution quality, and P&L weekly
+
+
+--- PAGE 12 ---
+Set a quarterly review cadence to re-evaluate scoring weights and thresholds
+13. Summary of Key Parameters
+Parameter Value Notes
+Capital per position 50% Fixed; no exceptions
+Max concurrent
+positions
+1 Always
+Minimum cash reserve 50% Always
+Stop-loss 4% below entry Hard bracket order; to be calibrated
+Entry timing Near close on entry day Final 15–30 min of session
+Exit timing Close on report processing
+day
+Market-on-close order
+Direction Long only No shorting
+Trade forced when no
+signal
+Never Hold cash
+Post-earnings exclusion
+window
+14 calendar days Adjustable; validate via backtest
+Insider universe C-suite, board, 10%+
+owners, Congress
+Form 4 + STOCK Act disclosures
+10b5-1 plan trades Excluded Not genuine real-time signals
+Data sources All free SEC EDGAR, Yahoo Finance,
+House/Senate Stock Watcher
+This proposal represents the initial design speciﬁcation. All parameters marked as open
+items in Section 11 are intentionally left as conﬁgurable variables pending backtesting. The
+document should be revisited and updated following Phase 3 backtesting results.
