@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<ownershipDocument>
+  <documentSchemaVersion>0001111111-26-000002</documentSchemaVersion>
+  <periodOfReport>2026-06-10</periodOfReport>
+  <issuer>
+    <issuerName>Example Corp</issuerName>
+    <issuerTradingSymbol>EXMP</issuerTradingSymbol>
+  </issuer>
+  <reportingOwner>
+    <reportingOwnerId>
+      <rptOwnerCik>0000000002</rptOwnerCik>
+      <rptOwnerName>Sam Director</rptOwnerName>
+    </reportingOwnerId>
+    <reportingOwnerRelationship>
+      <isDirector>1</isDirector>
+      <isOfficer>0</isOfficer>
+      <isTenPercentOwner>0</isTenPercentOwner>
+      <isOther>0</isOther>
+    </reportingOwnerRelationship>
+  </reportingOwner>
+  <nonDerivativeTable>
+    <nonDerivativeTransaction>
+      <transactionDate><value>2026-06-08</value></transactionDate>
+      <transactionCoding><transactionCode>S</transactionCode></transactionCoding>
+      <transactionAmounts>
+        <transactionShares><value>1000</value></transactionShares>
+        <transactionPricePerShare><value>11.00</value></transactionPricePerShare>
+      </transactionAmounts>
+      <ownershipNature>
+        <directOrIndirectOwnership><value>D</value></directOrIndirectOwnership>
+      </ownershipNature>
+    </nonDerivativeTransaction>
+    <nonDerivativeTransaction>
+      <transactionDate><value>2026-06-09</value></transactionDate>
+      <transactionCoding><transactionCode>P</transactionCode></transactionCoding>
+      <transactionAmounts>
+        <transactionShares><value>500</value></transactionShares>
+      </transactionAmounts>
+      <ownershipNature>
+        <directOrIndirectOwnership><value>I</value></directOrIndirectOwnership>
+      </ownershipNature>
+    </nonDerivativeTransaction>
+  </nonDerivativeTable>
+</ownershipDocument>
+

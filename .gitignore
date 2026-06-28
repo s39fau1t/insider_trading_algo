@@ -1,15 +1,8 @@
-# Python-generated files
+.venv/
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Environment Variables, Secrets & Keys
-.env
-
-sec-edgar-filings
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+data/*.sqlite3
+data/*.sqlite3-*

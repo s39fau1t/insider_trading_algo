@@ -1,11 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "new-algo"
+name = "insider-swing-trader"
 version = "0.1.0"
-description = "Add your description here"
+description = "Insider-buying earnings swing-trading scanner and IBKR paper-trading runner."
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = [
-    "lxml>=6.1.1",
-    "sec-edgar-downloader>=5.1.0",
-    "yfinance>=1.4.1",
-]
+requires-python = ">=3.9"
+authors = [{ name = "AI Insider Trading Algo" }]
+dependencies = []
+
+[project.optional-dependencies]
+broker = ["ib_async>=1.0.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+insider-swing = "insider_swing_trader.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["insider_swing_trader*"]

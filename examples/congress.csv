@@ -1,0 +1,3 @@
+ticker,transaction_date,disclosure_date,transaction_type,amount_low,amount_high,representative
+EXMP,2026-06-15,2026-06-20,Purchase,15001,50000,Rep Example
+
