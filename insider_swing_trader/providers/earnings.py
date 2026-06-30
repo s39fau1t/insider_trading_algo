@@ -78,8 +78,9 @@ class FmpEarningsProvider:
         return json.loads(self.fetcher(f"{self.base_url}?{query}"))
 
     def events(self, start: date, end: date) -> Iterable[EarningsEvent]:
-        lookback_start = start - timedelta(days=460)
-        rows = self._fetch(lookback_start, end)
+        # lookback_start = start - timedelta(days=460)
+        # rows = self._fetch(lookback_start, end)
+        rows = self._fetch(start, end)
         dated: list[tuple[str, date, EarningsTiming]] = []
         for row in rows:
             symbol = (row.get("symbol") or row.get("ticker") or "").strip().upper()
