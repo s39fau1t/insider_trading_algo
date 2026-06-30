@@ -56,7 +56,7 @@ class FmpEarningsProvider:
         self,
         api_key: str,
         fetcher: Callable[[str], str] | None = None,
-        base_url: str = "https://financialmodelingprep.com/api/v3/earning_calendar",
+        base_url: str = "https://financialmodelingprep.com/stable/earnings-calendar",
     ):
         self.api_key = api_key
         self.fetcher = fetcher or self._default_fetcher
@@ -74,6 +74,7 @@ class FmpEarningsProvider:
                 "apikey": self.api_key,
             }
         )
+        print(f"{self.base_url}?{query}")
         return json.loads(self.fetcher(f"{self.base_url}?{query}"))
 
     def events(self, start: date, end: date) -> Iterable[EarningsEvent]:
